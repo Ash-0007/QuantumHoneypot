@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Backend service (Go)
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../deployment/Dockerfile.backend
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - AI_SERVICE_URL=http://ai-service:5000
+      - DB_PATH=/app/data/pqcd.db
+      - LOG_LEVEL=info
+    volumes:
+      - ../database:/app/data
+    depends_on:
+      - ai-service
+      - db-init
+    restart: unless-stopped
+
+  # AI service (Python)
+  ai-service:
+    build:
+      context: ../ai
+      dockerfile: ../deployment/Dockerfile.ai
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DEBUG=false
+      - DB_PATH=/app/data/pqcd.db
+    volumes:
+      - ../ai/models:/app/models
+      - ../database:/app/data
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../deployment/Dockerfile.frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8082
+      - REACT_APP_AI_SERVICE_URL=http://localhost:5000
+    depends_on:
+      - backend
+      - ai-service
+    restart: unless-stopped
+
+  # Database initialization service
+  db-init:
+    build:
+      context: ../database
+      dockerfile: ../deployment/Dockerfile.db
+    volumes:
+      - ../database:/app/data
+    command: ["python", "init_db.py", "/app/data/pqcd.db"]
+
+volumes:
+  db_data:
+    driver: local 
