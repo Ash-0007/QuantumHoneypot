@@ -6,7 +6,6 @@ import axios from 'axios';
 
 // Define API base URLs
 const BACKEND_URL = 'http://localhost:8082';
-const AI_SERVICE_URL = 'http://localhost:5000';
 
 function App() {
   // Decoy generation state
@@ -16,7 +15,7 @@ function App() {
   const [decoys, setDecoys] = useState([]);
   
   // Key generation state
-  const [algorithm, setAlgorithm] = useState('kyber');
+  const [algorithm, setAlgorithm] = useState('ml-kem-768');
   const [decoyCount, setDecoyCount] = useState(5);
   const [keyPair, setKeyPair] = useState(null);
   
@@ -38,7 +37,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('encryption');
   
   // Backend services status
-  const [backendStatus, setBackendStatus] = useState({ go: 'unknown', ai: 'unknown' });
+  const [backendStatus, setBackendStatus] = useState({ go: 'unknown' });
   
   useEffect(() => {
     // Check backend status on load
@@ -49,13 +48,12 @@ function App() {
     try {
       // Check Go backend
       const goResponse = await axios.get(`${BACKEND_URL}/api/health`);
-      setBackendStatus(prev => ({ ...prev, go: 'operational' }));
-      
-      // Check AI service
-      const aiResponse = await axios.get(`${AI_SERVICE_URL}/health`);
-      setBackendStatus(prev => ({ ...prev, ai: 'operational' }));
+      if (goResponse.status === 200) {
+        setBackendStatus(prev => ({ ...prev, go: 'operational' }));
+      }
     } catch (err) {
       console.error('Error checking status:', err);
+      setBackendStatus(prev => ({ ...prev, go: 'error' }));
     }
   };
 
@@ -89,8 +87,7 @@ function App() {
     setSuccess('');
     
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/keys/generate`, {
-        algorithm,
+      const response = await axios.post(`${BACKEND_URL}/api/${algorithm}/keygen`, {
         count: parseInt(decoyCount)
       });
       
@@ -98,13 +95,13 @@ function App() {
       setSuccess('Key pair generated successfully!');
       
       // Set the public key for encryption automatically
-      if (response.data.public_key) {
-        setPublicKey(response.data.public_key);
+      if (response.data.publicKey) {
+        setPublicKey(response.data.publicKey);
       }
       
       // Set the private key for decryption automatically
-      if (response.data.private_key) {
-        setPrivateKey(response.data.private_key);
+      if (response.data.privateKey) {
+        setPrivateKey(response.data.privateKey);
       }
     } catch (err) {
       console.error('Error generating key pair:', err);
@@ -122,8 +119,8 @@ function App() {
     
     try {
       const response = await axios.post(`${BACKEND_URL}/api/encrypt`, {
-        public_key: publicKey,
-        algorithm,
+        publicKey: publicKey,
+        algorithm: algorithm,
         data: message
       });
       
@@ -151,21 +148,20 @@ function App() {
     
     try {
       const response = await axios.post(`${BACKEND_URL}/api/decrypt`, {
-        private_key: privateKey,
-        ciphertext,
-        nonce,
-        algorithm
+        privateKey: privateKey,
+        ciphertext: ciphertext,
+        algorithm: algorithm
       });
       
-      if (response.data.plaintext) {
-        setDecryptedMessage(response.data.plaintext);
-        setSuccess('Message decrypted successfully!');
+      if (response.data.sharedSecret) {
+        setDecryptedMessage(response.data.sharedSecret);
+        setSuccess('Shared secret decapsulated successfully!');
       } else {
-        setError('Decryption returned no plaintext');
+        setError('Decapsulation returned no shared secret');
       }
     } catch (err) {
       console.error('Error decrypting message:', err);
-      setError('Failed to decrypt message. Please check your private key.');
+      setError('Failed to decapsulate. Please check your private key and ciphertext.');
     } finally {
       setLoading(false);
     }
@@ -181,7 +177,6 @@ function App() {
           </p>
           <div className="d-flex gap-2 mb-3">
             <Badge bg={backendStatus.go === 'operational' ? 'success' : 'danger'}>Go Backend: {backendStatus.go}</Badge>
-            <Badge bg={backendStatus.ai === 'operational' ? 'success' : 'danger'}>AI Service: {backendStatus.ai}</Badge>
           </div>
         </Col>
       </Row>
@@ -208,10 +203,10 @@ function App() {
                         value={algorithm}
                         onChange={(e) => setAlgorithm(e.target.value)}
                       >
-                        <option value="kyber">Kyber (KEM)</option>
-                        <option value="saber">Saber (KEM)</option>
-                        <option value="ntru">NTRU (KEM)</option>
-                        <option value="dilithium">Dilithium (Signature)</option>
+                        <option value="ml-kem-768">ML-KEM-768 (Kyber)</option>
+                        <option value="ml-dsa-65">ML-DSA-65 (Dilithium)</option>
+                        <option value="ecdh">ECDH</option>
+                        <option value="ecdsa">ECDSA</option>
                       </Form.Select>
                     </Form.Group>
                     
@@ -244,7 +239,7 @@ function App() {
                       <p><strong>Algorithm:</strong> {keyPair.algorithm}</p>
                       <p><strong>Fingerprint:</strong> {keyPair.fingerprint}</p>
                       <p><strong>Decoys:</strong> {keyPair.decoys ? keyPair.decoys.length : 0}</p>
-                      <p><strong>Generated:</strong> {new Date(keyPair.generated_at).toLocaleString()}</p>
+                      <p><strong>Generated:</strong> {new Date(keyPair.generatedAt).toLocaleString()}</p>
                     </div>
                   )}
                 </Card.Body>
@@ -338,17 +333,6 @@ function App() {
                           />
                         </Form.Group>
                         
-                        <Form.Group className="mb-3">
-                          <Form.Label>Nonce</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={nonce}
-                            onChange={(e) => setNonce(e.target.value)}
-                            placeholder="Enter nonce"
-                            required
-                          />
-                        </Form.Group>
-                        
                         <Button variant="warning" type="submit" disabled={loading}>
                           {loading ? (
                             <>
@@ -363,7 +347,7 @@ function App() {
                       
                       {decryptedMessage && (
                         <div className="mt-3">
-                          <h5>Decrypted Message:</h5>
+                          <h5>Shared Secret:</h5>
                           <div className="bg-light p-2 rounded text-break">
                             {decryptedMessage}
                           </div>
