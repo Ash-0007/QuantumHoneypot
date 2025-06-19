@@ -126,18 +126,6 @@ The AI-driven security layer includes:
    - Deceive: Return validly formatted but cryptographically incorrect responses
    - Redirect: Transparently redirect to a honeypot system for threat intelligence gathering
 
-## Paper Citation
-
-If you use this framework in your research, please cite our paper:
-```
-@inproceedings{doe2025framework,
-  title={A Framework for Evaluating Post-Quantum Cryptography in Go-Based Secure APIs},
-  author={Doe, John and Smith, Jane and Brown, Robert},
-  booktitle={Proceedings of the International Conference on Cryptographic Engineering},
-  year={2025},
-  organization={IEEE}
-}
-```
 
 ## License
 
