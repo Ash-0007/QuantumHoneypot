@@ -21,7 +21,7 @@ import (
 func main() {
 	// Parse command line flags
 	var (
-		port        = flag.Int("port", 8080, "Port to listen on")
+		port        = flag.Int("port", 8082, "Port to listen on")
 		enableAI    = flag.Bool("enable-ai", false, "Enable AI threat detection")
 		logLevel    = flag.String("log-level", "info", "Log level (debug, info, warn, error)")
 	)

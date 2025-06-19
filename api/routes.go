@@ -1,6 +1,9 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	
@@ -40,6 +43,19 @@ func RegisterRoutes(r *mux.Router) {
 	// Register general encrypt/decrypt endpoints
 	api.HandleFunc("/encrypt", handler.HandleEncapsulate()).Methods("POST")
 	api.HandleFunc("/decrypt", handler.HandleDecapsulate()).Methods("POST")
+
+	// This is a placeholder for your actual PQC API endpoints.
+	// The AI middleware will wrap these routes.
+	api.HandleFunc("/api/crypto/{algorithm}/{operation}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		algorithm := vars["algorithm"]
+		operation := vars["operation"]
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := fmt.Sprintf(`{"status": "ok", "message": "successfully performed %s for %s"}`, operation, algorithm)
+		fmt.Fprintln(w, response)
+	}).Methods("POST", "GET")
 
 	logrus.Info("API routes registered")
 }
